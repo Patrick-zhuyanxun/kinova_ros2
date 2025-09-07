@@ -11,10 +11,10 @@ import yaml
 
 configurable_parameters = [
     {'name': 'use_urdf',              'default': "true"},
-    {'name': 'kinova_robotType',      'default': "j2n6s300"},
+    {'name': 'kinova_robotType',      'default': "j2s6s300"},
     {'name': 'kinova_robotName',      'default': "left"},
     {'name': 'kinova_robotSerial',    'default': "not_set"},
-    {'name': 'use_jaco_v1_fingers',   'default': "true"},
+    {'name': 'use_jaco_v1_fingers',   'default': "false"},
     {'name': 'feedback_publish_rate', 'default': "0.1"},
     {'name': 'tolerance',             'default': "2.0"},
 ]

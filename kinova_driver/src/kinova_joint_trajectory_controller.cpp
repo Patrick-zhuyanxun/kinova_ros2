@@ -10,8 +10,19 @@ JointTrajectoryController::JointTrajectoryController(kinova::KinovaComm &kinova_
 {
     //RCLCPP_DEBUG_STREAM_ONCE(nh_->get_logger(), "Get in: " << __PRETTY_FUNCTION__);
 
+    // Default values (will be overridden by parameters if provided)
     prefix_ = "j2n6s300";
     robot_type = "j2n6s300";
+
+    // Prefer the launch-provided kinova_robotType to avoid hard-coded defaults
+    std::string kinova_robot_type_param;
+    if (!nh_->has_parameter("kinova_robotType"))
+        nh_->declare_parameter("kinova_robotType", kinova_robot_type_param);
+    nh_->get_parameter("kinova_robotType", kinova_robot_type_param);
+    if (!kinova_robot_type_param.empty()) {
+        robot_type = kinova_robot_type_param;
+        prefix_ = kinova_robot_type_param; // keep joint name prefix consistent with URDF (e.g., j2s6s300_joint_1)
+    }
     
     if (!nh_->has_parameter("robot_name"))
         nh_->declare_parameter("robot_name", prefix_);
