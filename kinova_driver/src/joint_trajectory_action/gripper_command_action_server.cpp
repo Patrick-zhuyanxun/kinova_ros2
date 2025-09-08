@@ -144,21 +144,27 @@ void GripperCommandActionController::goalCBFollow(std::shared_ptr<GoalHandleGCAS
     }
 
     has_active_goal_ = true;
-    // gripper_gap 0 is open, 1.4 is close. Here command.position from Moveit.rviz is finger radian value, rather than Cartesian gap of gripper in meter.
-    double gripper_gap = goal->command.position * (180 / M_PI);
+    // command.position from MoveIt is the gripper gap in meters (0 = open, ~1.4 = closed for 3-finger).
+    // Convert meters to internal finger units using finger_conv_ratio_ (meters per tick).
+    double desired_gap_m = goal->command.position;
+    double target_ticks = desired_gap_m / finger_conv_ratio_;
+    // Clamp to valid range [0, finger_max_turn_]
+    if (target_ticks < 0.0) target_ticks = 0.0;
+    if (target_ticks > finger_max_turn_) target_ticks = finger_max_turn_;
     RCLCPP_INFO(nh_->get_logger(), "Gripper_command_action_server accepted goal!");
 
-    // send the goal to fingers position action server, Todo: check what's going on mathematically
+    // send the goal to fingers position action server
     auto client_goal = kinova_msgs::action::SetFingersPosition::Goal();
-    client_goal.fingers.finger1 = gripper_gap;
-    client_goal.fingers.finger2 = gripper_gap;
+    client_goal.fingers.finger1 = target_ticks;
+    client_goal.fingers.finger2 = target_ticks;
     if (gripper_joint_num_ == 3)
-        client_goal.fingers.finger3 = gripper_gap;
+        client_goal.fingers.finger3 = target_ticks;
     else
         client_goal.fingers.finger3 = 0.0;
 
     RCLCPP_INFO(nh_->get_logger(), "Gripper_command_action_server published goal via command publisher!");
-    RCLCPP_INFO_STREAM(nh_->get_logger(), "Finger angles target " << client_goal.fingers.finger1 << "," << client_goal.fingers.finger2 << "," << client_goal.fingers.finger3);
+    RCLCPP_INFO_STREAM(nh_->get_logger(), "Finger ticks target " << client_goal.fingers.finger1 << "," << client_goal.fingers.finger2 << "," << client_goal.fingers.finger3
+                                              << " (gap commanded: " << desired_gap_m << " m)");
     auto send_goal_options = rclcpp_action::Client<kinova_msgs::action::SetFingersPosition>::SendGoalOptions();
     send_goal_options.result_callback = std::bind(&GripperCommandActionController::result_callback, this, std::placeholders::_1);
     action_client_set_finger_->async_send_goal(client_goal, send_goal_options);
@@ -183,7 +189,8 @@ void GripperCommandActionController::controllerStateCB(const kinova_msgs::msg::F
     if (abs_error1<gripper_command_goal_constraint_  && abs_error2<gripper_command_goal_constraint_ && abs_error3<gripper_command_goal_constraint_)
     {
         RCLCPP_INFO(nh_->get_logger(), "Gripper command goal succeeded!");
-        active_goal_->succeed(active_result_);
+    if (!active_result_) { active_result_ = std::make_shared<GCAS::Result>(); }
+    active_goal_->succeed(active_result_);
         has_active_goal_ = false;
     }
 }
