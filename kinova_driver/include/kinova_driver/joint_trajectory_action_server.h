@@ -46,6 +46,8 @@ using GoalHandleFJTAS = rclcpp_action::ServerGoalHandle<FJTAS>;
         std::map<std::string,double> trajectory_constraints_;
         double goal_time_constraint_;
         double stopped_velocity_tolerance_;
+    double final_settle_time_;
+    bool enforce_stop_;
     double default_goal_tolerance_;
 
         void goalCBFollow(std::shared_ptr<GoalHandleFJTAS> gh);

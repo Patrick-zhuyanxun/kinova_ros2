@@ -92,6 +92,7 @@ add_executable(gripper_command_action_server
   include/kinova_driver/gripper_command_action_server.h)
 target_link_libraries(gripper_command_action_server kinova_driver)
 
+
 add_executable(positional_action_server 
   src/joint_trajectory_action/positional_action_server.cpp)
 target_link_libraries(positional_action_server kinova_driver)

@@ -1,10 +1,12 @@
 #include <kinova_driver/joint_trajectory_action_server.h>
+#include <sstream>
 
 using namespace kinova;
 
 JointTrajectoryActionController::JointTrajectoryActionController(std::shared_ptr<rclcpp::Node> n, std::string &robot_name):
     nh_(n),
-    has_active_goal_(false)
+    has_active_goal_(false),
+    first_fb_(true)
 {
     std::string robot_type = robot_name;
     std::string address;
@@ -33,7 +35,8 @@ JointTrajectoryActionController::JointTrajectoryActionController(std::shared_ptr
         joint_names_[i] = robot_name + "_joint_" + std::to_string(i+1);
     }
 
-    int goal_time_constraint_ = 0;
+    // Allowed time after nominal trajectory end for goal constraints to be met (seconds)
+    goal_time_constraint_ = 1.0;
     if (!nh_->has_parameter("constraints/goal_time"))
         nh_->declare_parameter("constraints/goal_time", goal_time_constraint_);
     nh_->get_parameter("constraints/goal_time", goal_time_constraint_);
@@ -44,6 +47,8 @@ JointTrajectoryActionController::JointTrajectoryActionController(std::shared_ptr
         std::string ns = std::string("constraints/") + joint_names_[i];
         double g = -1.0;
         double t = -1.0;
+        // double g = 0.005;
+        // double t = 0.005;
 
         if (!nh_->has_parameter(ns + "/goal"))
             nh_->declare_parameter(ns + "/goal", g);
@@ -56,10 +61,16 @@ JointTrajectoryActionController::JointTrajectoryActionController(std::shared_ptr
         trajectory_constraints_[joint_names_[i]] = t;
     }
 
-    double stopped_velocity_tolerance_ = 0.01;
+    stopped_velocity_tolerance_ = 0.1;
     if (!nh_->has_parameter("constraints/stopped_velocity_tolerance"))
         nh_->declare_parameter("constraints/stopped_velocity_tolerance", stopped_velocity_tolerance_);
     nh_->get_parameter("constraints/stopped_velocity_tolerance", stopped_velocity_tolerance_);
+
+    // Additional settling (hold) time appended to the received trajectory to allow joints to converge
+    final_settle_time_ = 1.0; // seconds
+    if (!nh_->has_parameter("constraints/final_settle_time"))
+        nh_->declare_parameter("constraints/final_settle_time", final_settle_time_);
+    nh_->get_parameter("constraints/final_settle_time", final_settle_time_);
 
     pub_controller_command_ = nh_->create_publisher<trajectory_msgs::msg::JointTrajectory>
             ("/"+ robot_name + "_driver/trajectory_controller/command", 1);
@@ -115,36 +126,44 @@ static bool setsEqual(const std::vector<std::string> &a, const std::vector<std::
 
 void JointTrajectoryActionController::watchdog()
 {
+    if (!has_active_goal_)
+        return;
+
     rclcpp::Time now = nh_->get_clock()->now();
-            has_active_goal_ = false;
+    bool should_abort = false;
 
-    // Aborts the active goal if the controller does not appear to be active.
-    if (has_active_goal_)
+    if (!last_controller_state_.header.stamp.sec)
     {
-        bool should_abort = false;
-        if (!last_controller_state_.header.stamp.sec)
-        {
-            should_abort = true;
-            RCLCPP_WARN(nh_->get_logger(), "Aborting goal because we have never heard a controller state message.");
-        }
-        else if ((now - last_controller_state_.header.stamp) > rclcpp::Duration(5,0))
-        {
-            should_abort = true;
-            RCLCPP_WARN(nh_->get_logger(), "Aborting goal because we haven't heard from the controller in %.3lf seconds",
+        should_abort = true;
+        RCLCPP_WARN_THROTTLE(nh_->get_logger(), *nh_->get_clock(), 5000, "Aborting goal because no controller state messages were received.");
+    }
+    else if ((now - last_controller_state_.header.stamp) > rclcpp::Duration(5,0))
+    {
+        should_abort = true;
+        RCLCPP_WARN(nh_->get_logger(), "Aborting goal because we haven't heard from the controller in %.3lf seconds",
                      (now.seconds() - last_controller_state_.header.stamp.sec));
-        }
+    }
 
-        if (should_abort)
+    if (!current_traj_.points.empty())
+    {
+        rclcpp::Duration traj_duration = current_traj_.points.back().time_from_start;
+        if (now - start_time_ > traj_duration + rclcpp::Duration(goal_time_constraint_, 0))
         {
-            // Stops the controller.
-            trajectory_msgs::msg::JointTrajectory empty;
-            empty.joint_names = joint_names_;
-            //pub_controller_command_->publish(empty);
-
-            // Marks the current goal as aborted.
-            active_goal_->abort(active_result_);
-            has_active_goal_ = false;
+            should_abort = true;
+            RCLCPP_WARN(nh_->get_logger(), "Aborting goal because trajectory time exceeded (%.3f s + %.3f s tolerance)",
+                        traj_duration.seconds(), goal_time_constraint_);
         }
+    }
+
+    if (should_abort && has_active_goal_)
+    {
+        trajectory_msgs::msg::JointTrajectory empty;
+        empty.joint_names = joint_names_;
+        // pub_controller_command_->publish(empty);
+        active_result_->error_code = control_msgs::action::FollowJointTrajectory::Result::INVALID_GOAL;
+        active_result_->error_string = "Aborted by watchdog";
+        active_goal_->abort(active_result_);
+        has_active_goal_ = false;
     }
 }
 
@@ -171,15 +190,8 @@ rclcpp_action::CancelResponse JointTrajectoryActionController::handle_cancel(con
 
 void JointTrajectoryActionController::handle_accepted(const std::shared_ptr<GoalHandleFJTAS> goal_handle)
 {
-    // active_goal_ = goal_handle;
-    // has_active_goal_ = true;
-    // first_fb_ = true;
     RCLCPP_INFO(nh_->get_logger(), "Joint_trajectory_action_server accepted goal!");
- 	// this needs to return quickly to avoid blocking the executor, so spin up a new thread
-    std::thread
-    {
-        std::bind(&JointTrajectoryActionController::goalCBFollow, this, std::placeholders::_1), goal_handle
-    }.detach();
+    std::thread{std::bind(&JointTrajectoryActionController::goalCBFollow, this, std::placeholders::_1), goal_handle}.detach();
 }
 
 void JointTrajectoryActionController::goalCBFollow(std::shared_ptr<GoalHandleFJTAS> gh)
@@ -188,6 +200,8 @@ void JointTrajectoryActionController::goalCBFollow(std::shared_ptr<GoalHandleFJT
     RCLCPP_INFO(nh_->get_logger(), "Joint_trajectory_action_server received goal!");
 
     active_result_ = std::make_shared<FJTAS::Result>();
+    active_result_->error_code = FJTAS::Result::SUCCESSFUL;
+    active_result_->error_string.clear();
 
     // Ensures that the joints in the goal match the joints we are commanding.
     if (!setsEqual(joint_names_, goal->trajectory.joint_names))
@@ -198,23 +212,68 @@ void JointTrajectoryActionController::goalCBFollow(std::shared_ptr<GoalHandleFJT
     }
 
 
-    // Cancels the currently active goal.
-    if (has_active_goal_)
+    // Cancel currently active goal if different
+    if (has_active_goal_ && active_goal_ != gh)
     {
-        // Stops the controller.
         trajectory_msgs::msg::JointTrajectory empty;
         empty.joint_names = joint_names_;
-        //pub_controller_command_->publish(empty);
-
-        // Marks the current goal as canceled.
+        // pub_controller_command_->publish(empty);
         active_goal_->canceled(active_result_);
         has_active_goal_ = false;
     }
 
+    // Activate new goal
+    active_goal_ = gh;
+    has_active_goal_ = true;
+    first_fb_ = true;
+    start_time_ = nh_->get_clock()->now();
+
     // Sends the trajectory along to the controller
     current_traj_ = goal->trajectory;
+    if (current_traj_.header.stamp.sec == 0 && current_traj_.header.stamp.nanosec == 0)
+        current_traj_.header.stamp = start_time_;
+
+    // Ensure trajectory has at least one point
+    if (current_traj_.points.empty())
+    {
+        RCLCPP_WARN(nh_->get_logger(), "Received empty trajectory - aborting goal");
+        gh->abort(active_result_);
+        has_active_goal_ = false;
+        return;
+    }
+
+    // Guarantee last point velocities vector size equals joints (fill zeros if missing)
+    trajectory_msgs::msg::JointTrajectoryPoint &last_pt = current_traj_.points.back();
+    if (last_pt.velocities.size() != joint_names_.size())
+    {
+        last_pt.velocities.resize(joint_names_.size(), 0.0);
+    }
+    // Force last point velocities to zero to command a stop exactly at final pose
+    bool any_last_nonzero = false;
+    for (double &v : last_pt.velocities)
+    {
+        if (fabs(v) > 1e-6) any_last_nonzero = true;
+        v = 0.0;
+    }
+
+    // Append an explicit settling hold point if settle time > 0
+    if (final_settle_time_ > 1e-6)
+    {
+        trajectory_msgs::msg::JointTrajectoryPoint settle_pt = last_pt;
+        // Keep positions same, zero velocities/accelerations/effort
+        settle_pt.velocities.assign(joint_names_.size(), 0.0);
+        settle_pt.accelerations.clear();
+        settle_pt.effort.clear();
+    // Add settle time to builtin_interfaces::msg::Duration manually
+    double total_sec = last_pt.time_from_start.sec + last_pt.time_from_start.nanosec * 1e-9 + final_settle_time_;
+    settle_pt.time_from_start.sec = static_cast<int32_t>(floor(total_sec));
+    settle_pt.time_from_start.nanosec = static_cast<uint32_t>((total_sec - settle_pt.time_from_start.sec) * 1e9);
+        current_traj_.points.push_back(settle_pt);
+        RCLCPP_DEBUG(nh_->get_logger(), "Appended settling point (%.2fs after last) any_last_nonzero=%s", final_settle_time_, any_last_nonzero?"true":"false");
+    }
+
     pub_controller_command_->publish(current_traj_);
-    RCLCPP_INFO(nh_->get_logger(), "Joint_trajectory_action_server published goal via command publisher!");
+    RCLCPP_INFO(nh_->get_logger(), "Joint_trajectory_action_server published goal with %zu points (start stamp %.2f)!", current_traj_.points.size(), current_traj_.header.stamp.sec + current_traj_.header.stamp.nanosec * 1e-9);
 }
 
 void JointTrajectoryActionController::controllerStateCB(const control_msgs::action::FollowJointTrajectory_Feedback::SharedPtr msg)
@@ -261,8 +320,11 @@ void JointTrajectoryActionController::controllerStateCB(const control_msgs::acti
             // computing error from goal pose
             double abs_error = fabs(msg->actual.positions[i] - current_traj_.points[last].positions[i]);
             double goal_constraint = goal_constraints_[msg->joint_names[i]];
-            if (goal_constraint >= 0 && abs_error > goal_constraint)
+            if (goal_constraint >= 0 && abs_error > goal_constraint){
                 inside_goal_constraints = false;
+                RCLCPP_DEBUG(nh_->get_logger(), "Joint %s outside goal tolerance: error=%.6f tol=%.6f", msg->joint_names[i].c_str(), abs_error, goal_constraint);
+
+            }
             // It's important to be stopped if that's desired.
             if ( !(msg->desired.velocities.empty()) && (fabs(msg->desired.velocities[i]) < 1e-6) )
             {
@@ -272,9 +334,13 @@ void JointTrajectoryActionController::controllerStateCB(const control_msgs::acti
         }
         if (inside_goal_constraints)
         {
-            active_goal_->succeed(active_result_);
-            has_active_goal_ = false;
-            first_fb_ = true;
+            if (has_active_goal_)
+            {
+                active_goal_->succeed(active_result_);
+                has_active_goal_ = false;
+                first_fb_ = true;
+                RCLCPP_INFO(nh_->get_logger(), "Joint trajectory goal succeeded.");
+            }
         }
         else if (now - end_time < rclcpp::Duration(goal_time_constraint_,0))
         {
@@ -282,7 +348,23 @@ void JointTrajectoryActionController::controllerStateCB(const control_msgs::acti
         }
         else
         {
-            RCLCPP_WARN(nh_->get_logger(), "Aborting because we wound up outside the goal constraints");
+            // Build detailed per-joint diagnostics prior to aborting
+            std::ostringstream oss;
+            oss.setf(std::ios::fixed); oss.precision(6);
+            oss << "Goal constraint violation details:";
+            for (size_t i = 0; i < msg->joint_names.size(); ++i)
+            {
+                double goal_pos = current_traj_.points[last].positions[i];
+                double actual_pos = msg->actual.positions[i];
+                double abs_error = fabs(actual_pos - goal_pos);
+                double tol = goal_constraints_[msg->joint_names[i]];
+                oss << "\n  " << msg->joint_names[i]
+                    << ": goal=" << goal_pos
+                    << " actual=" << actual_pos
+                    << " error=" << abs_error
+                    << " tol=" << tol;
+            }
+            RCLCPP_WARN(nh_->get_logger(), "Aborting because we wound up outside the goal constraints. %s", oss.str().c_str());
             active_goal_->abort(active_result_);
             has_active_goal_ = false;
         }

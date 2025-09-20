@@ -37,6 +37,44 @@ def generate_launch_description():
     declare_robot_type = DeclareLaunchArgument(
         'kinova_robotType', default_value='j2s6s300', description='Kinova robot type, e.g. j2s6s300 or j2n6s300'
     )
+    # Expose key execution / goal tolerance parameters for easy tuning at launch time
+    declare_goal_joint_tol = DeclareLaunchArgument(
+        'goal_joint_tolerance', default_value='0.005',
+        description='Joint-space goal tolerance (rad). Tighten if motion stops early; loosen if goals fail.'
+    )
+    declare_goal_pos_tol = DeclareLaunchArgument(
+        'goal_position_tolerance', default_value='0.005',
+        description='Cartesian position goal tolerance (meters).'
+    )
+    declare_goal_ori_tol = DeclareLaunchArgument(
+        'goal_orientation_tolerance', default_value='0.01',
+        description='Cartesian orientation goal tolerance (radians).'
+    )
+    declare_allowed_start_tol = DeclareLaunchArgument(
+        'allowed_start_tolerance', default_value='0.05',
+        description='Allowed joint state deviation between current state and trajectory start.'
+    )
+    declare_allowed_goal_duration_margin = DeclareLaunchArgument(
+        'allowed_goal_duration_margin', default_value='5.0',
+        description='Extra time (s) allowed past trajectory end before considering it failed.'
+    )
+    declare_allowed_execution_duration_scaling = DeclareLaunchArgument(
+        'allowed_execution_duration_scaling', default_value='15.0',
+        description='Scaling factor on planned duration allowed for execution before timeout.'
+    )
+    # Time-Optimal Trajectory Generation (TOTG) / resampling parameters used by AddTimeOptimalParameterization
+    declare_path_tolerance = DeclareLaunchArgument(
+        'path_tolerance', default_value='0.001',
+        description='move_group.path_tolerance (rad). Smaller => denser resampling and closer tracking.'
+    )
+    declare_resample_dt = DeclareLaunchArgument(
+        'resample_dt', default_value='0.02',
+        description='move_group.resample_dt (s). Decrease to densify time samples between points.'
+    )
+    declare_min_angle_change = DeclareLaunchArgument(
+        'min_angle_change', default_value='0.0002',
+        description='move_group.min_angle_change (rad). Minimum joint delta to create a waypoint.'
+    )
 
     def yaml_to_dict(path_to_yaml):
         return yaml.safe_load(pathlib.Path(path_to_yaml).read_text())
@@ -149,7 +187,7 @@ def generate_launch_description():
             'move_group': {
                 'planning_plugin': 'ompl_interface/OMPLPlanner',
                 'request_adapters': 'default_planner_request_adapters/AddTimeOptimalParameterization default_planner_request_adapters/FixWorkspaceBounds default_planner_request_adapters/FixStartStateBounds default_planner_request_adapters/FixStartStateCollision default_planner_request_adapters/FixStartStatePathConstraints',
-                'start_state_max_bounds_error': 0.1,
+                'start_state_max_bounds_error': 0.001,
             }
         }
         ompl_planning_yaml_path = os.path.join(moveit_config_dir, 'ompl_planning.yaml')
@@ -157,19 +195,26 @@ def generate_launch_description():
             ompl_planning_yaml = yaml_to_dict(ompl_planning_yaml_path) or {}
             ompl_planning_pipeline_config['move_group'].update(strip_none(ompl_planning_yaml))
 
-        # Execution and goal tolerance tuning: ensure we reach the goal in one go
+        # Execution and goal tolerance tuning (now parameterized via launch arguments)
+        # NOTE: Extremely small tolerances (e.g., 5e-5) can cause premature success/failure due to encoder quantization.
+        # Start with moderately strict defaults defined in the launch arguments above.
         execution_tuning = {
-            # Tighten goal tolerances for joint and pose goals
-            'goal_joint_tolerance': 0.00005,
-            'goal_position_tolerance': 0.00005,
-            'goal_orientation_tolerance': 0.003,
-            # Make execution robust to small timing issues and allow enough time to settle
+            'goal_joint_tolerance': float(LaunchConfiguration('goal_joint_tolerance').perform(context)),
+            'goal_position_tolerance': float(LaunchConfiguration('goal_position_tolerance').perform(context)),
+            'goal_orientation_tolerance': float(LaunchConfiguration('goal_orientation_tolerance').perform(context)),
             'trajectory_execution': {
-                'allowed_start_tolerance': 0.005,
-                'allowed_goal_duration_margin': 2.0,
-                'allowed_execution_duration_scaling': 1.5,
+                'allowed_start_tolerance': float(LaunchConfiguration('allowed_start_tolerance').perform(context)),
+                'allowed_goal_duration_margin': float(LaunchConfiguration('allowed_goal_duration_margin').perform(context)),
+                'allowed_execution_duration_scaling': float(LaunchConfiguration('allowed_execution_duration_scaling').perform(context)),
                 'execution_duration_monitoring': True,
             },
+        }
+
+        # Parameters read by AddTimeOptimalParameterization (your log shows they were missing and defaulted)
+        topp_params = {
+            'move_group.path_tolerance': float(LaunchConfiguration('path_tolerance').perform(context)),
+            'move_group.resample_dt': float(LaunchConfiguration('resample_dt').perform(context)),
+            'move_group.min_angle_change': float(LaunchConfiguration('min_angle_change').perform(context)),
         }
 
         # Load controllers and normalize schema
@@ -203,10 +248,10 @@ def generate_launch_description():
             cfg = controllers_yaml.get(cname, {}) or {}
             if 'constraints' not in cfg:
                 joints = cfg.get('joints', []) or []
-                per_joint = {jn: {'goal': 0.001, 'trajectory': 0.005} for jn in joints}
+                per_joint = {jn: {'goal': 0.0005, 'trajectory': 0.0005} for jn in joints}
                 cfg['constraints'] = {
                     'goal_time': 2.0,
-                    'stopped_velocity_tolerance': 0.0001,
+                    'stopped_velocity_tolerance': 0.1,
                     **per_joint,
                 }
                 controllers_yaml[cname] = cfg
@@ -226,6 +271,7 @@ def generate_launch_description():
                     description_semantic,
                     description_kinematics,
                     execution_tuning,
+                    topp_params,
                     moveit_controllers,
                     ompl_planning_pipeline_config,
                     description_joint_limits,
@@ -243,5 +289,14 @@ def generate_launch_description():
 
     return LaunchDescription([
         declare_robot_type,
+        declare_goal_joint_tol,
+        declare_goal_pos_tol,
+        declare_goal_ori_tol,
+        declare_allowed_start_tol,
+        declare_allowed_goal_duration_margin,
+        declare_allowed_execution_duration_scaling,
+    declare_path_tolerance,
+    declare_resample_dt,
+    declare_min_angle_change,
         OpaqueFunction(function=setup_nodes),
     ])
