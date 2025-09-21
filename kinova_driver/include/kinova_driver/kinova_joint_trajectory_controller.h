@@ -61,6 +61,16 @@ private:
     const static int num_possible_joints = 7; // number of possible joints supported by the system
     float current_velocity_command[num_possible_joints]; // storage array to keep calculated velocity commands
     double remaining_motion_time[num_possible_joints]; // time of motion remaining for each joint during the last command
+    bool remaining_motion_time_computed_ = false; // computed once when entering last segment
+    // Last-phase convergence helpers
+    std::vector<double> last_motion_target_positions_; // radians
+    double settle_end_time_sec_ = 0.0; // seconds since start for final settle point
+    // Parameters for last-phase convergence
+    double last_phase_kp_ = 2.0; // [1/s]
+    double last_phase_min_speed_deg_s_ = 0.3; // deg/s
+    double last_phase_tolerance_rad_ = 0.005; // rad
+    // Logging/termination helpers
+    int last_reported_index_ = -1; // last point index we've logged as reached
     
     struct Segment
     {

@@ -318,9 +318,10 @@ void JointTrajectoryActionController::controllerStateCB(const control_msgs::acti
         for (size_t i = 0; i < msg->joint_names.size() && inside_goal_constraints; ++i)
         {
             // computing error from goal pose
-            double abs_error = fabs(msg->actual.positions[i] - current_traj_.points[last].positions[i]);
+            double err = angles::shortest_angular_distance(current_traj_.points[last].positions[i], msg->actual.positions[i]);
+            double abs_error = fabs(err);
             double goal_constraint = goal_constraints_[msg->joint_names[i]];
-            if (goal_constraint >= 0 && abs_error > goal_constraint){
+            if (goal_constraint >= 0.0 && abs_error > goal_constraint){
                 inside_goal_constraints = false;
                 RCLCPP_DEBUG(nh_->get_logger(), "Joint %s outside goal tolerance: error=%.6f tol=%.6f", msg->joint_names[i].c_str(), abs_error, goal_constraint);
 

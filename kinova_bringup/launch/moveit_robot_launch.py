@@ -39,11 +39,11 @@ def generate_launch_description():
     )
     # Expose key execution / goal tolerance parameters for easy tuning at launch time
     declare_goal_joint_tol = DeclareLaunchArgument(
-        'goal_joint_tolerance', default_value='0.005',
+        'goal_joint_tolerance', default_value='0.001',
         description='Joint-space goal tolerance (rad). Tighten if motion stops early; loosen if goals fail.'
     )
     declare_goal_pos_tol = DeclareLaunchArgument(
-        'goal_position_tolerance', default_value='0.005',
+        'goal_position_tolerance', default_value='0.001',
         description='Cartesian position goal tolerance (meters).'
     )
     declare_goal_ori_tol = DeclareLaunchArgument(
@@ -51,15 +51,15 @@ def generate_launch_description():
         description='Cartesian orientation goal tolerance (radians).'
     )
     declare_allowed_start_tol = DeclareLaunchArgument(
-        'allowed_start_tolerance', default_value='0.05',
+        'allowed_start_tolerance', default_value='0.001',
         description='Allowed joint state deviation between current state and trajectory start.'
     )
     declare_allowed_goal_duration_margin = DeclareLaunchArgument(
-        'allowed_goal_duration_margin', default_value='5.0',
+        'allowed_goal_duration_margin', default_value='2.0',
         description='Extra time (s) allowed past trajectory end before considering it failed.'
     )
     declare_allowed_execution_duration_scaling = DeclareLaunchArgument(
-        'allowed_execution_duration_scaling', default_value='15.0',
+        'allowed_execution_duration_scaling', default_value='5.0',
         description='Scaling factor on planned duration allowed for execution before timeout.'
     )
     # Time-Optimal Trajectory Generation (TOTG) / resampling parameters used by AddTimeOptimalParameterization
@@ -72,7 +72,7 @@ def generate_launch_description():
         description='move_group.resample_dt (s). Decrease to densify time samples between points.'
     )
     declare_min_angle_change = DeclareLaunchArgument(
-        'min_angle_change', default_value='0.0002',
+        'min_angle_change', default_value='0.0005',
         description='move_group.min_angle_change (rad). Minimum joint delta to create a waypoint.'
     )
 
