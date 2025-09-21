@@ -37,7 +37,7 @@ JointTrajectoryActionController::JointTrajectoryActionController(std::shared_ptr
     }
 
     // Allowed time after nominal trajectory end for goal constraints to be met (seconds)
-    goal_time_constraint_ = 1.0;
+    goal_time_constraint_ = 2.0;
     if (!nh_->has_parameter("constraints/goal_time"))
         nh_->declare_parameter("constraints/goal_time", goal_time_constraint_);
     nh_->get_parameter("constraints/goal_time", goal_time_constraint_);
@@ -68,7 +68,8 @@ JointTrajectoryActionController::JointTrajectoryActionController(std::shared_ptr
     nh_->get_parameter("constraints/stopped_velocity_tolerance", stopped_velocity_tolerance_);
 
     // Additional settling (hold) time appended to the received trajectory to allow joints to converge
-    final_settle_time_ = 1.0; // seconds
+    // Default to 0 to avoid a 1s "stuck" at the last point and state inconsistencies.
+    final_settle_time_ = 0.0; // seconds (was 1.0)
     if (!nh_->has_parameter("constraints/final_settle_time"))
         nh_->declare_parameter("constraints/final_settle_time", final_settle_time_);
     nh_->get_parameter("constraints/final_settle_time", final_settle_time_);
@@ -312,7 +313,8 @@ void JointTrajectoryActionController::controllerStateCB(const control_msgs::acti
     int last = current_traj_.points.size() - 1;
     rclcpp::Time end_time = start_time_ + current_traj_.points[last].time_from_start;
 
-    if (end_time - now < rclcpp::Duration(goal_time_constraint_,0))
+    // Only decide success/failure at or after the nominal end time (no early success window)
+    if (now >= end_time)
     {
         // Checks that we have ended inside the goal constraints
         bool inside_goal_constraints = true;
@@ -325,15 +327,15 @@ void JointTrajectoryActionController::controllerStateCB(const control_msgs::acti
             if (goal_constraint >= 0.0 && abs_error > goal_constraint){
                 inside_goal_constraints = false;
                 RCLCPP_DEBUG(nh_->get_logger(), "Joint %s outside goal tolerance: error=%.6f tol=%.6f", msg->joint_names[i].c_str(), abs_error, goal_constraint);
-
             }
             // It's important to be stopped if that's desired.
-            if ( !(msg->desired.velocities.empty()) && (fabs(msg->desired.velocities[i]) < 1e-6) )
+            if (!(msg->desired.velocities.empty()) && (fabs(msg->desired.velocities[i]) < 1e-6))
             {
                 if (fabs(msg->actual.velocities[i]) > stopped_velocity_tolerance_)
                     inside_goal_constraints = false;
             }
         }
+
         if (inside_goal_constraints)
         {
             if (has_active_goal_)
@@ -344,9 +346,9 @@ void JointTrajectoryActionController::controllerStateCB(const control_msgs::acti
                 RCLCPP_INFO(nh_->get_logger(), "Joint trajectory goal succeeded.");
             }
         }
-        else if (now - end_time < rclcpp::Duration(goal_time_constraint_,0))
+        else if (now - end_time < rclcpp::Duration(goal_time_constraint_, 0))
         {
-            // Still have some time left to make it.
+            // Within tolerance window after end_time: allow more time to settle before failing.
         }
         else
         {
