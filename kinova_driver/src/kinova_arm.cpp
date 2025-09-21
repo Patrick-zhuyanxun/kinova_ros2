@@ -10,9 +10,19 @@
 #include <string>
 #include <boost/lexical_cast.hpp>
 #include <kinova_driver/kinova_ros_types.h>
+#include <angles/angles.h>
 
 namespace
 {
+    inline double normalize_deg_positive(double deg)
+    {
+        // Wrap to [0,360)
+        double res = fmod(deg, 360.0);
+        if (res < 0.0) res += 360.0;
+        // Due to rounding, 360 -> 0
+        if (res >= 360.0) res -= 360.0;
+        return res;
+    }
     /// \brief Convert Kinova-specific angle degree variations (0..180, 360-181) to
     ///        a more regular representation (0..180, -180..0).
     inline void convertKinDeg(double& qd)
@@ -644,6 +654,14 @@ void KinovaArm::publishJointAngles(void)
     KinovaAngles current_angles;
     kinova_comm_.getJointAngles(current_angles);
     kinova_msgs::msg::JointAngles kinova_angles = current_angles.constructAnglesMsg();
+    // Normalize angles in degrees to [0,360)
+    kinova_angles.joint1 = normalize_deg_positive(kinova_angles.joint1);
+    kinova_angles.joint2 = normalize_deg_positive(kinova_angles.joint2);
+    kinova_angles.joint3 = normalize_deg_positive(kinova_angles.joint3);
+    kinova_angles.joint4 = normalize_deg_positive(kinova_angles.joint4);
+    kinova_angles.joint5 = normalize_deg_positive(kinova_angles.joint5);
+    kinova_angles.joint6 = normalize_deg_positive(kinova_angles.joint6);
+    kinova_angles.joint7 = normalize_deg_positive(kinova_angles.joint7);
 
     AngularPosition joint_command;
     kinova_comm_.getAngularCommand(joint_command);
@@ -655,18 +673,18 @@ void KinovaArm::publishJointAngles(void)
 
     // Transform from Kinova DH algorithm to physical angles in radians, then place into vector array
     joint_state.position.resize(joint_total_number_);
-    joint_state.position[0] = kinova_angles.joint1 * M_PI/180;
-    joint_state.position[1] = kinova_angles.joint2 * M_PI/180;
-    joint_state.position[2] = kinova_angles.joint3 * M_PI/180;
-    joint_state.position[3] = kinova_angles.joint4 * M_PI/180;
+    joint_state.position[0] = angles::normalize_angle_positive(kinova_angles.joint1 * M_PI/180);
+    joint_state.position[1] = angles::normalize_angle_positive(kinova_angles.joint2 * M_PI/180);
+    joint_state.position[2] = angles::normalize_angle_positive(kinova_angles.joint3 * M_PI/180);
+    joint_state.position[3] = angles::normalize_angle_positive(kinova_angles.joint4 * M_PI/180);
     if (arm_joint_number_ >= 6)
     {
-        joint_state.position[4] = kinova_angles.joint5 * M_PI/180;
-        joint_state.position[5] = kinova_angles.joint6 * M_PI/180;
+    joint_state.position[4] = angles::normalize_angle_positive(kinova_angles.joint5 * M_PI/180);
+    joint_state.position[5] = angles::normalize_angle_positive(kinova_angles.joint6 * M_PI/180);
     }
     if (arm_joint_number_ == 7)
     {
-         joint_state.position[6] = kinova_angles.joint7 * M_PI/180;
+         joint_state.position[6] = angles::normalize_angle_positive(kinova_angles.joint7 * M_PI/180);
     }
 
     if(finger_number_==2)

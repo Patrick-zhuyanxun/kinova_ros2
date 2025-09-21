@@ -1,4 +1,5 @@
 #include <kinova_driver/joint_trajectory_action_server.h>
+#include <angles/angles.h>
 #include <sstream>
 
 using namespace kinova;
