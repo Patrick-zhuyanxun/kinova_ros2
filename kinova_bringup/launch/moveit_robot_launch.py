@@ -261,6 +261,28 @@ def generate_launch_description():
             'moveit_simple_controller_manager': controllers_yaml,
         })
 
+        # 3D sensors (OctoMap) from sensors_3d.yaml if present
+        octomap_updater_config_path = os.path.join(moveit_config_dir, 'sensors_3d.yaml')
+        octomap_updater_config = {}
+        if os.path.exists(octomap_updater_config_path):
+            try:
+                octomap_updater_config = yaml_to_dict(octomap_updater_config_path) or {}
+            except Exception:
+                octomap_updater_config = {}
+
+        # PlanningSceneMonitor & Octomap basic params
+        planning_scene_monitor_parameters = {
+            'publish_planning_scene': True,
+            'publish_geometry_updates': True,
+            'publish_state_updates': True,
+            'publish_transforms_updates': True,
+        }
+        # Keep octomap at a high-resolution voxel grid (1 cm voxels)
+        octomap_config = {
+            'octomap_frame': 'world',
+            'octomap_resolution': 0.01,
+        }
+
         nodes.append(
             Node(
                 package='moveit_ros_move_group',
@@ -275,6 +297,9 @@ def generate_launch_description():
                     moveit_controllers,
                     ompl_planning_pipeline_config,
                     description_joint_limits,
+                    planning_scene_monitor_parameters,
+                    octomap_config,
+                    octomap_updater_config,
                     sim_time,
                 ],
                 # Remap both relative and absolute forms to be robust to different name resolution behaviors

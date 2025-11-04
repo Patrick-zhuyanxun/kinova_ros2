@@ -65,6 +65,10 @@ arm:
     - TRRTkConfigDefault
     - PRMkConfigDefault
     - PRMstarkConfigDefault
+  
+workspace_parameters:
+  min_corner: [-1.5, -1.0, 0.3]   # x_min, y_min, z_min
+  max_corner: [0.0, 1.0, 2.0]     # x_max, y_max, z_max
   ### For some reason this section was missing compared to the other ompl_planning (for the other robot configurations).
   ### I am leaving this here, if anybody has a bug with this robot configuration, maybe try to uncomment this section
   # gripper:

@@ -1,0 +1,15 @@
+"sensors":
+  - env_pointcloud
+env_pointcloud:
+  sensor_plugin: occupancy_map_monitor/PointCloudOctomapUpdater
+  point_cloud_topic: /env_cloud_no_target
+  max_range: 1.5
+  point_subsample: 3
+  voxel_size: 0.01
+  padding_offset: 0.06
+  padding_scale: 1.1
+  max_update_rate: 5.0
+  filtered_cloud_topic: filtered_env_cloud
+  # Increase shape_padding so the self-filter reliably removes points that belong to the robot
+  shape_padding: 0.05
+  shape_scale: 1.0

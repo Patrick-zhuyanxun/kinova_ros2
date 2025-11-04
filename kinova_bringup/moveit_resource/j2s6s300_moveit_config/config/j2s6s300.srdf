@@ -36,6 +36,23 @@
         <joint name="j2s6s300_joint_5" value="3.1415" />
         <joint name="j2s6s300_joint_6" value="3.1415" />
     </group_state>
+    <group_state name="Standby" group="arm">
+        <joint name="j2s6s300_joint_1" value="1.64061" />
+        <joint name="j2s6s300_joint_2" value="3.00197" />
+        <joint name="j2s6s300_joint_3" value="1.11701" />
+        <joint name="j2s6s300_joint_4" value="5.20108" />
+        <joint name="j2s6s300_joint_5" value="4.69494" />
+        <joint name="j2s6s300_joint_6" value="3.50811" />
+    </group_state>
+
+    <group_state name="Standby2" group="arm">
+        <joint name="j2s6s300_joint_1" value="-1.39626" />
+        <joint name="j2s6s300_joint_2" value="3.36849" />
+        <joint name="j2s6s300_joint_3" value="1.09956" />
+        <joint name="j2s6s300_joint_4" value="-1.2740952" />
+        <joint name="j2s6s300_joint_5" value="4.97419" />
+        <joint name="j2s6s300_joint_6" value="3.97935" />
+    </group_state>
     <group_state name="Open" group="gripper">
         <joint name="j2s6s300_joint_finger_1" value="0.2" />
         <joint name="j2s6s300_joint_finger_2" value="0.2" />
@@ -45,6 +62,11 @@
         <joint name="j2s6s300_joint_finger_1" value="1.2" />
         <joint name="j2s6s300_joint_finger_2" value="1.2" />
         <joint name="j2s6s300_joint_finger_3" value="1.2" />
+    </group_state>
+    <group_state name="Close_half" group="gripper">
+        <joint name="j2s6s300_joint_finger_1" value="1.08" />
+        <joint name="j2s6s300_joint_finger_2" value="1.08" />
+        <joint name="j2s6s300_joint_finger_3" value="1.08" />
     </group_state>
     <!--END EFFECTOR: Purpose: Represent information about an end effector.-->
     <end_effector name="end_effector" parent_link="j2s6s300_end_effector" group="gripper" />

@@ -74,7 +74,7 @@ def generate_launch_description():
     )
     declare_allowed_goal_duration_margin = DeclareLaunchArgument(
         "allowed_goal_duration_margin",
-        default_value="2.0",
+        default_value="8.0",
         description="Extra time (s) past trajectory end before failure.",
     )
     declare_allowed_execution_duration_scaling = DeclareLaunchArgument(
@@ -271,7 +271,7 @@ def generate_launch_description():
                 joints = cfg.get("joints", []) or []
                 per_joint = {jn: {"goal": 0.0005, "trajectory": 0.0005} for jn in joints}
                 cfg["constraints"] = {
-                    "goal_time": 2.0,
+                    "goal_time": 10.0,
                     "stopped_velocity_tolerance": 0.1,
                     **per_joint,
                 }
@@ -334,6 +334,13 @@ def generate_launch_description():
             )
 
         # move_group
+        sensors3d_path = os.path.join(moveit_config_dir, 'sensors_3d.yaml')
+        sensors3d = {}
+        if os.path.exists(sensors3d_path):
+            try:
+                sensors3d = yaml.safe_load(pathlib.Path(sensors3d_path).read_text()) or {}
+            except Exception:
+                sensors3d = {}
         nodes.append(
             Node(
                 package="moveit_ros_move_group",
@@ -349,6 +356,10 @@ def generate_launch_description():
                     execution_tuning,
                     topp_params,
                     extra_caps,
+                    {"octomap_frame": "world", "octomap_resolution": 0.01},
+                    sensors3d,
+                        # Explicitly enable self-filtering by ensuring the PlanningSceneMonitor has sensor_sources
+                        {"planning_scene_monitor": {"publish_geometry_updates": True, "publish_robot_description": True, "publish_planning_scene": True}},
                     sim_time,
                 ],
                 remappings=[

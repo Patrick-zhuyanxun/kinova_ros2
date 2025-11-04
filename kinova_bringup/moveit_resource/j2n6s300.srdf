@@ -61,6 +61,14 @@
         <joint name="j2n6s300_joint_5" value="3.1415" />
         <joint name="j2n6s300_joint_6" value="3.1415" />
     </group_state>
+    <group_state name="standby" group="arm">
+        <joint name="j2n6s300_joint_1" value="3.1415" />
+        <joint name="j2n6s300_joint_2" value="3.1415" />
+        <joint name="j2n6s300_joint_3" value="3.1415" />
+        <joint name="j2n6s300_joint_4" value="3.1415" />
+        <joint name="j2n6s300_joint_5" value="3.1415" />
+        <joint name="j2n6s300_joint_6" value="3.1415" />
+    </group_state>
     <!--END EFFECTOR: Purpose: Represent information about an end effector.-->
     <end_effector name="end_effector" parent_link="j2n6s300_end_effector" group="gripper" />
     <!--VIRTUAL JOINT: Purpose: this element defines a virtual joint between a robot link and an external frame of reference (considered fixed with respect to the robot)-->
