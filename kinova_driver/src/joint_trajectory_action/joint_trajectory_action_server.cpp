@@ -212,7 +212,12 @@ if (has_active_goal_ && active_goal_ != gh)
 trajectory_msgs::msg::JointTrajectory empty;
 empty.joint_names = joint_names_;
 // pub_controller_command_->publish(empty);
+
+// Only cancel if the goal is still executing
+if (active_goal_->is_executing())
+{
 active_goal_->canceled(active_result_);
+}
 has_active_goal_ = false;
 }
 

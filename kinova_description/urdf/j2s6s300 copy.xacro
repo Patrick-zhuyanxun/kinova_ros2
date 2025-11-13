@@ -51,12 +51,12 @@
     <xacro:property name="joint_base_origin_rpy" value="0 0 0" />
 
     <xacro:property name="joint_1" value="joint_1" />
-    <xacro:property name="joint_1_type" value="revolute" />
+    <xacro:property name="joint_1_type" value="continuous" />
     <xacro:property name="joint_1_axis_xyz" value="0 0 1" />
     <xacro:property name="joint_1_origin_xyz" value="0 0 0.15675" />
     <xacro:property name="joint_1_origin_rpy" value="0 ${J_PI} 0" />
-    <xacro:property name="joint_1_lower_limit" value="${J_PI}" />
-    <xacro:property name="joint_1_upper_limit" value="${360/180 * J_PI}" />
+    <xacro:property name="joint_1_lower_limit" value="${-2*J_PI}" />
+    <xacro:property name="joint_1_upper_limit" value="${2*J_PI}" />
     <xacro:property name="joint_1_velocity_limit" value="${36*J_PI/180}" />
     <xacro:property name="joint_1_torque_limit" value="40" />
 
@@ -81,12 +81,12 @@
     <xacro:property name="joint_3_torque_limit" value="40" />
 
     <xacro:property name="joint_4" value="joint_4" />
-    <xacro:property name="joint_4_type" value="revolute" />
+    <xacro:property name="joint_4_type" value="continuous" />
     <xacro:property name="joint_4_axis_xyz" value="0 0 1" />
     <xacro:property name="joint_4_origin_xyz" value="0 0.2073 -0.0114" />
     <xacro:property name="joint_4_origin_rpy" value="${-J_PI/2} 0 ${J_PI}" />
-    <xacro:property name="joint_4_lower_limit" value="${0/180 *J_PI}" />
-    <xacro:property name="joint_4_upper_limit" value="${360/180 *J_PI}" />
+    <xacro:property name="joint_4_lower_limit" value="${-2*J_PI}" />
+    <xacro:property name="joint_4_upper_limit" value="${2*J_PI}" />
     <xacro:property name="joint_4_velocity_limit" value="${48*J_PI/180}" />
     <xacro:property name="joint_4_torque_limit" value="20" />
 

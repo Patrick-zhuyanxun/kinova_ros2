@@ -3,7 +3,7 @@
 env_pointcloud:
   sensor_plugin: occupancy_map_monitor/PointCloudOctomapUpdater
   point_cloud_topic: /env_cloud_no_target
-  max_range: 1.5
+  max_range: 1.0
   point_subsample: 3
   voxel_size: 0.01
   padding_offset: 0.06

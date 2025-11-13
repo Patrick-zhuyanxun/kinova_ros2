@@ -46,12 +46,56 @@
     </group_state>
 
     <group_state name="Standby2" group="arm">
-        <joint name="j2s6s300_joint_1" value="-1.39626" />
-        <joint name="j2s6s300_joint_2" value="3.36849" />
-        <joint name="j2s6s300_joint_3" value="1.09956" />
-        <joint name="j2s6s300_joint_4" value="-1.2740952" />
-        <joint name="j2s6s300_joint_5" value="4.97419" />
-        <joint name="j2s6s300_joint_6" value="3.97935" />
+        <joint name="j2s6s300_joint_1" value="-1.972" />
+        <joint name="j2s6s300_joint_2" value="2.862 " />
+        <joint name="j2s6s300_joint_3" value="0.838" />
+        <joint name="j2s6s300_joint_4" value="1.763" />
+        <joint name="j2s6s300_joint_5" value="3.578" />
+        <joint name="j2s6s300_joint_6" value="1.029" />
+
+        <!-- <joint name="j2s6s300_joint_1" value="-1.9897" />
+        <joint name="j2s6s300_joint_2" value="2.5831 " />
+        <joint name="j2s6s300_joint_3" value="0.8901" />
+        <joint name="j2s6s300_joint_4" value="-2.2166" />
+        <joint name="j2s6s300_joint_5" value="2.6704" />
+        <joint name="j2s6s300_joint_6" value="2.5307 " /> -->
+        
+    </group_state>
+    <group_state name="Standby_table" group="arm">
+        <!-- <joint name="j2s6s300_joint_1" value="-1.431170" /> -->
+        <joint name="j2s6s300_joint_1" value="4.85201530718" />
+        <joint name="j2s6s300_joint_2" value="3.124139" />
+        <joint name="j2s6s300_joint_3" value="1.902409" />
+        <joint name="j2s6s300_joint_4" value="3.054326" />
+        <joint name="j2s6s300_joint_5" value="1.308997" />
+        <joint name="j2s6s300_joint_6" value="-0.052360" />
+    </group_state>
+    <group_state name="Put_right" group="arm">
+        <!-- <joint name="j2s6s300_joint_1" value="-1.047198" /> -->
+        <joint name="j2s6s300_joint_1" value="5.23598775598" />
+        <joint name="j2s6s300_joint_2" value="3.892084" />
+        <joint name="j2s6s300_joint_3" value="1.640609" />
+        <joint name="j2s6s300_joint_4" value="3.036873" />
+        <joint name="j2s6s300_joint_5" value="2.251475" />
+        <joint name="j2s6s300_joint_6" value="0.436332" />
+    </group_state>
+    <group_state name="Put_right_above" group="arm">
+        <!-- <joint name="j2s6s300_joint_1" value="-1.029744" /> -->
+        <joint name="j2s6s300_joint_1" value="5.25344130718" />
+        <joint name="j2s6s300_joint_2" value="3.700098" />
+        <joint name="j2s6s300_joint_3" value="1.884956" />
+        <joint name="j2s6s300_joint_4" value="3.054326" />
+        <joint name="j2s6s300_joint_5" value="1.832596" />
+        <joint name="j2s6s300_joint_6" value="0.418879" />
+    </group_state>
+    <group_state name="Put_left_above" group="arm">
+        <!-- <joint name="j2s6s300_joint_1" value="-1.553343" /> -->
+        <joint name="j2s6s300_joint_1" value="4.71238898038" />
+        <joint name="j2s6s300_joint_2" value="3.420845" />
+        <joint name="j2s6s300_joint_3" value="1.483530" />
+        <joint name="j2s6s300_joint_4" value="3.071779" />
+        <joint name="j2s6s300_joint_5" value="1.989675" />
+        <joint name="j2s6s300_joint_6" value="-0.104720" />
     </group_state>
     <group_state name="Open" group="gripper">
         <joint name="j2s6s300_joint_finger_1" value="0.2" />
@@ -64,9 +108,9 @@
         <joint name="j2s6s300_joint_finger_3" value="1.2" />
     </group_state>
     <group_state name="Close_half" group="gripper">
-        <joint name="j2s6s300_joint_finger_1" value="1.08" />
-        <joint name="j2s6s300_joint_finger_2" value="1.08" />
-        <joint name="j2s6s300_joint_finger_3" value="1.08" />
+        <joint name="j2s6s300_joint_finger_1" value="1.10" />
+        <joint name="j2s6s300_joint_finger_2" value="1.10" />
+        <joint name="j2s6s300_joint_finger_3" value="1.10" />
     </group_state>
     <!--END EFFECTOR: Purpose: Represent information about an end effector.-->
     <end_effector name="end_effector" parent_link="j2s6s300_end_effector" group="gripper" />
